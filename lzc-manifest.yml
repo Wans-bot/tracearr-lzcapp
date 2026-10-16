@@ -1,0 +1,183 @@
+application:
+  subdomain: tracearr
+  routes:
+    - /=http://tracearr.cloud.lazycat.app.tracearr.lzcapp:3000
+  health_check:
+    test_url: http://tracearr.cloud.lazycat.app.tracearr.lzcapp:3000/health
+    start_period: 300s
+    timeout: 10s
+  injects:
+    # ── 网盘文件桥接（request 阶段）────────────────────────────────────────
+    # 官方《网盘文件选择器/自动拦截》要求 request 与 browser 两侧成对配置：
+    # 只配 browser 侧时自有目录「看起来能用」，共享目录按 owner 切换必然失败。
+    - id: lazycat-file-bridge
+      'on': request
+      auth_required: false
+      when:
+        - /__lazycat_file_bridge/*
+      do:
+        - src: >
+            const bridgePrefix = "/__lazycat_file_bridge";
+
+            const requestHost = String(ctx.request.host ||
+            "").split(":")[0].toLowerCase();
+
+            const firstDot = requestHost.indexOf(".");
+
+            const method = String(ctx.request.method || "").toUpperCase();
+
+            if (firstDot <= 0 || !requestHost.endsWith(".heiyu.space") ||
+            !["GET", "HEAD", "PUT"].includes(method)) {
+              ctx.response.send(["GET", "HEAD", "PUT"].includes(method) ? 400 : 405, "Invalid LazyCat file bridge request");
+              return;
+            }
+
+            const boxDomain = requestHost.slice(firstDot + 1);
+
+            ctx.headers.del("Origin");
+
+            ctx.headers.del("Referer");
+
+            ctx.proxy.to("https://file." + boxDomain, { path: "/files/home" +
+            ctx.request.path.slice(bridgePrefix.length), query:
+            ctx.request.raw_query, use_target_host: true, timeout_ms: 120000,
+            on_fail: "error" });
+    # 官方选择器脚本：Tracearr 的「导入 Tautulli / Jellystat 备份文件」是 <input type=file>，
+    # 导出/下载走 a[download] 锚点，两类入口都交给官方选择器接管。
+    - id: open-save-chooser
+      'on': browser
+      # 本应用页面不公开（无 public_path），匿名请求拿不到 HTML；
+      # 保持默认 auth_required=true，避免无票据上下文调用平台 API 报 GrpcWebError；
+      # 已登录的评审客户端照常执行。
+      when:
+        - /*
+      do:
+        - src: >-
+            file:///lzcapp/pkg/content/lazycat-injects/lzc-file-chooser-inject.js
+          params:
+            diskRoot: /_lzc/files/home
+            fileBridgeRoot: /__lazycat_file_bridge
+            fallbackMime: application/octet-stream
+            locale: auto
+            hooks:
+              fileSystemAccess: true
+              fileInput: true
+              downloadAnchor: true
+    # ── 免密登录（首次初始化 + 自动填充 + 账号切换）────────────────────────
+    # Tracearr 自带账号体系（Better Auth），不接微服 OIDC：账号由 tracearr-init
+    # 在安装时建好，这里在登录页自动填充并提交，并提供「切换账号」控件
+    # （停用自动登录 + 真登出），避免把用户钉死在同一个账号上。
+    - id: tracearr-autologin
+      'on': browser
+      auth_required: false
+      when:
+        - /*
+      do:
+        - src: file:///lzcapp/pkg/content/lazycat-injects/tracearr-autologin.js
+          params:
+            email: admin@lazycat.local
+            password: Tracearr@lazycat
+services:
+  # 首次初始化（幂等）：应用自带账号体系，安装时后台建好管理员，用户打开即已登录。
+  # 镜像复用应用镜像（自带 node），只换 entrypoint 跑脚本；脚本调应用网络内部服务名。
+  tracearr-init:
+    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:55856b7ea3db522c
+    entrypoint: /usr/local/bin/node
+    command: /lzcapp/pkg/content/bootstrap-admin.mjs
+    depends_on:
+      - timescale
+      - redis
+    environment:
+      TZ: Asia/Shanghai
+      LZC_BASE: http://tracearr:3000
+      LZC_ADMIN_EMAIL: admin@lazycat.local
+      LZC_ADMIN_PASSWORD: Tracearr@lazycat
+      LZC_ADMIN_NAME: Lazycat Admin
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - test -f /tmp/bootstrap.done
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  tracearr:
+    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:55856b7ea3db522c
+    # 镜像自带用户 tracearr(1001:1001)：挂载目录由平台以 root 建成，非 root 进程写不进去。
+    # 本机 lzcos 1.6.2 的 services.run_as 在挂载点上报 EOVERFLOW（平台缺陷），改用 root 运行。
+    user: '0:0'
+    depends_on:
+      - timescale
+      - redis
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      DATABASE_URL: >-
+        postgres://tracearr:{{ printf "%.24s" (stable_secret "TRACEARR_DB_PASSWORD") }}@timescale:5432/tracearr
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: '{{ printf "%.48s" (stable_secret "TRACEARR_JWT_SECRET") }}'
+      COOKIE_SECRET: '{{ printf "%.48s" (stable_secret "TRACEARR_COOKIE_SECRET") }}'
+      # 前面有平台网关一跳，取 X-Forwarded-* 里的客户端地址需要信任一跳
+      TRUST_PROXY: 'true'
+      LOG_LEVEL: info
+    binds:
+      - /lzcapp/var/tracearr-backup:/data/backup
+      - /lzcapp/var/tracearr-images:/data/tracearr/image-cache
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --no-verbose
+        - --tries=1
+        - --spider
+        - http://127.0.0.1:3000/health
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
+
+  timescale:
+    image: registry.lazycat.cloud/wans/timescale/timescaledb-ha:a31f0b1bafa3b7d4
+    # 镜像 USER=postgres：非 root 无法 chown 平台建出的 root 属主数据目录（initdb 会失败）。
+    # 以 root 启动，让容器自带 entrypoint 完成数据目录初始化与降权。
+    user: '0:0'
+    shm_size: 512mb
+    environment:
+      POSTGRES_USER: tracearr
+      POSTGRES_DB: tracearr
+      POSTGRES_PASSWORD: '{{ printf "%.24s" (stable_secret "TRACEARR_DB_PASSWORD") }}'
+      TZ: Asia/Shanghai
+    command: >-
+      postgres -c timescaledb.license=timescale
+      -c timescaledb.max_tuples_decompressed_per_dml_transaction=100000
+      -c max_locks_per_transaction=4096
+      -c timescaledb.telemetry_level=off
+      -c max_connections=150
+    binds:
+      - /lzcapp/var/tracearr-timescale:/home/postgres/pgdata/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U tracearr
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+
+  redis:
+    image: registry.lazycat.cloud/wans/library/redis:f3f10dd7ce11fc67
+    command: redis-server --appendonly yes
+    environment:
+      TZ: Asia/Shanghai
+    binds:
+      - /lzcapp/var/tracearr-redis:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
