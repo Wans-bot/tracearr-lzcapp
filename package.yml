@@ -1,5 +1,5 @@
 package: cloud.lazycat.app.tracearr
-version: 2.8.0-3
+version: 2.8.3
 name: Tracearr
 description: 把 Plex / Jellyfin / Emby 的播放情况汇总成一个面板，看谁在播、播了什么，并识别账号共享。
 author: connorgallopo
@@ -15,34 +15,28 @@ locales:
     name: Tracearr 媒体播放统计
     description: 把 Plex、Jellyfin、Emby 的播放情况汇总到一个面板：实时查看正在播放的会话、播放历史与统计，并识别账号共享。
     usage: >
-      Tracearr 是媒体服务器的播放监控面板：它可以同时连接 Plex、Jellyfin、Emby，在一块面板上显示谁正在看什么、
-      历史和统计，并把「同一个人用多个账号」的行为合并识别。
+      Tracearr 是媒体服务器的播放监控面板：它可以同时连接 Plex、Jellyfin、Emby，在一块面板上显示谁正在看什么、 历史和统计，并把「同一个人用多个账号」的行为合并识别。
 
 
       审核账号（应用自身的登录，与微服账号无关）：
 
-      - 邮箱：admin@lazycat.local
-      - 密码：Tracearr@lazycat
+      - 邮箱：admin@lazycat.local - 密码：Tracearr@lazycat
 
       正常情况下不需要手动输入：打开应用会自动完成登录。若你手动退出了登录，用上面的账号密码即可重新进入。
 
 
       首次使用：
 
-      1. 打开应用，会自动进入已登录状态（首次安装时后台已经建好管理员账号）。
-      2. 进入「设置 → 媒体服务器」，添加你自己的 Plex / Jellyfin / Emby：填写服务器地址与 API 令牌（Plex 用 X-Plex-Token，
+      1. 打开应用，会自动进入已登录状态（首次安装时后台已经建好管理员账号）。 2. 进入「设置 → 媒体服务器」，添加你自己的 Plex / Jellyfin / Emby：填写服务器地址与 API 令牌（Plex 用 X-Plex-Token，
+
          Jellyfin / Emby 在各自后台「API 密钥」里生成）。
       3. 保存后回到总览页，面板会显示该服务器的会话、库与服务器负载。
 
 
       常用操作：
 
-      - 总览：正在播放的会话、每个服务器的 CPU / 内存 / 带宽曲线。
-      - 播放分析：按用户、媒体、时间查看历史记录，可导入 Tautulli / Jellystat 的历史数据。
-      - 账号共享识别：把同一个人在不同服务器的账号合并成一个身份，可手动合并或拆分；信任分取所有账号里最低的一个。
-      - 自动化：内置触发器与动作模板（例如「同一账号多处同时播放」「暂停过久自动停止」），可以发通知、调整信任分、停止播放。
-      - 通知与订阅邮件：按日 / 周 / 月把新入库内容发给成员。
-      - 语言：界面跟随浏览器语言，中文环境默认显示简体中文，也可以在设置里切换。
+      - 总览：正在播放的会话、每个服务器的 CPU / 内存 / 带宽曲线。 - 播放分析：按用户、媒体、时间查看历史记录，可导入 Tautulli / Jellystat 的历史数据。 - 账号共享识别：把同一个人在不同服务器的账号合并成一个身份，可手动合并或拆分；信任分取所有账号里最低的一个。 - 自动化：内置触发器与动作模板（例如「同一账号多处同时播放」「暂停过久自动停止」），可以发通知、调整信任分、停止播放。 - 通知与订阅邮件：按日 / 周 / 月把新入库内容发给成员。 - 语言：界面跟随浏览器语言，中文环境默认显示简体中文，也可以在设置里切换。
+
         主界面、导航、设置项、添加服务器与提示均已中文化；历史记录、媒体库、自动化等较新页面的部分字段在上游
         zh-CN 语言包里还是空值，会回退显示英文（上游 translations 目录 zh-CN/pages.json 有 56% 的键为空）。
         本项目按规则不自行翻译上游文案。
@@ -50,56 +44,52 @@ locales:
 
       说明与限制：
 
-      - 需要自备媒体服务器：Tracearr 本身不提供影视内容，只读取你已有的 Plex / Jellyfin / Emby 数据；没有媒体服务器时面板为空。
-      - 实时事件：Plex 自带推送；Jellyfin / Emby 需要装上游的 Tracearr SSE 插件才能实时，否则按轮询间隔刷新。
-      - 密码与密钥：三个容器的数据库密码、会话密钥在首次安装时随机生成并稳定保存，重装不会改变。
-      - 数据持久化：数据库（TimescaleDB）与缓存都在 /lzcapp/var 下，重启与升级不会丢。
-      - 资源占用：共 4 个容器（应用、数据库、缓存，以及一个安装时建号的初始化容器），首次启动需要 1–3 分钟建库。
+      - 需要自备媒体服务器：Tracearr 本身不提供影视内容，只读取你已有的 Plex / Jellyfin / Emby 数据；没有媒体服务器时面板为空。 - 实时事件：Plex 自带推送；Jellyfin / Emby 需要装上游的 Tracearr SSE 插件才能实时，否则按轮询间隔刷新。 - 密码与密钥：三个容器的数据库密码、会话密钥在首次安装时随机生成并稳定保存，重装不会改变。 - 数据持久化：数据库（TimescaleDB）与缓存都在 /lzcapp/var 下，重启与升级不会丢。 - 资源占用：共 4 个容器（应用、数据库、缓存，以及一个安装时建号的初始化容器），首次启动需要 1–3 分钟建库。
+
   en-US:
     name: Tracearr
     description: >-
-      One dashboard for Plex, Jellyfin and Emby: watch live streams, browse
-      playback analytics and detect account sharing.
+      One dashboard for Plex, Jellyfin and Emby: watch live streams, browse playback analytics and detect account sharing.
     usage: >
-      Tracearr is a monitoring dashboard for your media servers. It connects to
-      Plex, Jellyfin and Emby at the same time and shows who is watching what,
-      playback history and statistics, and merges accounts that belong to the
-      same person.
+      Tracearr is a monitoring dashboard for your media servers. It connects to Plex, Jellyfin and Emby at the same time and shows who is watching what, playback history and statistics, and merges accounts that belong to the same person.
 
 
       Review account (the app's own login, unrelated to your box account):
 
-      - Email: admin@lazycat.local
-      - Password: Tracearr@lazycat
+      - Email: admin@lazycat.local - Password: Tracearr@lazycat
 
-      You normally do not type these: opening the app signs you in
-      automatically. If you sign out, use the credentials above.
+      You normally do not type these: opening the app signs you in automatically. If you sign out, use the credentials above.
 
 
       Getting started:
 
       1. Open the app; you are already signed in (an administrator account is
+
          created during installation).
       2. Go to Settings -> Media Servers and add your Plex / Jellyfin / Emby
+
          server with its address and API token (X-Plex-Token for Plex; an API
          key created in the Jellyfin / Emby admin UI).
       3. Save and return to the dashboard: sessions, libraries and server load
+
          appear for that server.
 
 
       Common tasks:
 
-      - Dashboard: active streams plus per-server CPU / memory / bandwidth.
-      - Playback analytics: history by user, media and time; import history
+      - Dashboard: active streams plus per-server CPU / memory / bandwidth. - Playback analytics: history by user, media and time; import history
+
          from Tautulli or Jellystat.
       - Account sharing detection: merge the same person's accounts on
+
          different servers into one identity; trust score takes the lowest of
          the merged accounts.
       - Automations: built-in triggers and templates (for example simultaneous
+
          locations, stop paused streams) with notification and stop-stream
          actions.
-      - Newsletters: daily, weekly or monthly new-content mail to members.
-      - Language: the UI follows the browser language; Simplified Chinese is
+      - Newsletters: daily, weekly or monthly new-content mail to members. - Language: the UI follows the browser language; Simplified Chinese is
+
          shown automatically and can be changed in settings.
          The main UI, navigation, settings items, the add-server dialog and all
          prompts are translated. Some fields on newer pages (history, library,
@@ -111,13 +101,18 @@ locales:
       Notes and limits:
 
       - A media server is required. Tracearr ships no media; it only reads your
+
          existing Plex / Jellyfin / Emby data.
       - Instant events: Plex pushes its own events; Jellyfin and Emby need the
+
          upstream Tracearr SSE plugin, otherwise polling intervals apply.
       - Secrets: database password and session secrets are generated randomly
+
          at install time and stay stable across reinstalls.
       - Persistence: database (TimescaleDB) and caches live under /lzcapp/var;
+
          restarts and upgrades keep the data.
       - Footprint: four containers (app, database, cache and an initialisation
+
          container that creates the admin account); the first start
          takes 1-3 minutes to initialise the database.

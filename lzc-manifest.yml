@@ -19,15 +19,14 @@ application:
         - src: >
             const bridgePrefix = "/__lazycat_file_bridge";
 
-            const requestHost = String(ctx.request.host ||
-            "").split(":")[0].toLowerCase();
+            const requestHost = String(ctx.request.host || "").split(":")[0].toLowerCase();
 
             const firstDot = requestHost.indexOf(".");
 
             const method = String(ctx.request.method || "").toUpperCase();
 
-            if (firstDot <= 0 || !requestHost.endsWith(".heiyu.space") ||
-            !["GET", "HEAD", "PUT"].includes(method)) {
+            if (firstDot <= 0 || !requestHost.endsWith(".heiyu.space") || !["GET", "HEAD", "PUT"].includes(method)) {
+
               ctx.response.send(["GET", "HEAD", "PUT"].includes(method) ? 400 : 405, "Invalid LazyCat file bridge request");
               return;
             }
@@ -38,10 +37,8 @@ application:
 
             ctx.headers.del("Referer");
 
-            ctx.proxy.to("https://file." + boxDomain, { path: "/files/home" +
-            ctx.request.path.slice(bridgePrefix.length), query:
-            ctx.request.raw_query, use_target_host: true, timeout_ms: 120000,
-            on_fail: "error" });
+            ctx.proxy.to("https://file." + boxDomain, { path: "/files/home" + ctx.request.path.slice(bridgePrefix.length), query: ctx.request.raw_query, use_target_host: true, timeout_ms: 120000, on_fail: "error" });
+
     # 官方选择器脚本：Tracearr 的「导入 Tautulli / Jellystat 备份文件」是 <input type=file>，
     # 导出/下载走 a[download] 锚点，两类入口都交给官方选择器接管。
     - id: open-save-chooser
@@ -81,7 +78,8 @@ services:
   # 首次初始化（幂等）：应用自带账号体系，安装时后台建好管理员，用户打开即已登录。
   # 镜像复用应用镜像（自带 node），只换 entrypoint 跑脚本；脚本调应用网络内部服务名。
   tracearr-init:
-    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:55856b7ea3db522c
+    # upstream: ghcr.io/connorgallopo/tracearr:2.8.3
+    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:966dbbb86b1b5af3
     entrypoint: /usr/local/bin/node
     command: /lzcapp/pkg/content/bootstrap-admin.mjs
     depends_on:
@@ -101,9 +99,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
-
   tracearr:
-    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:55856b7ea3db522c
+    # upstream: ghcr.io/connorgallopo/tracearr:2.8.3
+    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:966dbbb86b1b5af3
     # 镜像自带用户 tracearr(1001:1001)：挂载目录由平台以 root 建成，非 root 进程写不进去。
     # 本机 lzcos 1.6.2 的 services.run_as 在挂载点上报 EOVERFLOW（平台缺陷），改用 root 运行。
     user: '0:0'
@@ -136,7 +134,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 180s
-
   timescale:
     image: registry.lazycat.cloud/wans/timescale/timescaledb-ha:a31f0b1bafa3b7d4
     # 镜像 USER=postgres：非 root 无法 chown 平台建出的 root 属主数据目录（initdb 会失败）。
@@ -149,11 +146,7 @@ services:
       POSTGRES_PASSWORD: '{{ printf "%.24s" (stable_secret "TRACEARR_DB_PASSWORD") }}'
       TZ: Asia/Shanghai
     command: >-
-      postgres -c timescaledb.license=timescale
-      -c timescaledb.max_tuples_decompressed_per_dml_transaction=100000
-      -c max_locks_per_transaction=4096
-      -c timescaledb.telemetry_level=off
-      -c max_connections=150
+      postgres -c timescaledb.license=timescale -c timescaledb.max_tuples_decompressed_per_dml_transaction=100000 -c max_locks_per_transaction=4096 -c timescaledb.telemetry_level=off -c max_connections=150
     binds:
       - /lzcapp/var/tracearr-timescale:/home/postgres/pgdata/data
     healthcheck:
@@ -164,7 +157,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 120s
-
   redis:
     image: registry.lazycat.cloud/wans/library/redis:f3f10dd7ce11fc67
     command: redis-server --appendonly yes
