@@ -1,0 +1,57 @@
+# LazyCat GitHub Action 配置：跟随上游镜像标签自动更新 Tracearr 的 LPK
+#
+# 上游：connorgallopo/Tracearr（AGPL-3.0）
+# 应用镜像：ghcr.io/connorgallopo/tracearr，标签形如 v2.8.3
+# 版本来源与 Manifest 改写目标是两个决定：version_source 决定 package.yml 的版本，images[] 决定哪些
+# service 的 image 字段被改写。tracearr 与 tracearr-init 用同一个上游镜像，两处都要跟。
+version: 1
+
+project:
+  root: .
+  build_config: lzc-build.yml
+  package_file: package.yml
+  output: dist/tracearr.lpk
+  target_arch: amd64
+
+update:
+  strategy: publish
+  allow_downgrade: false
+  version_source:
+    type: image
+    image: tracearr
+
+build:
+  # 本工程不做源码构建，LPK 内容来自仓库内的 content/ 与 Manifest
+  run_buildscript: false
+
+images:
+  - id: tracearr
+    target: service
+    service: tracearr
+    source: ghcr.io/connorgallopo/tracearr
+    channel: stable
+    # 跟随整支 v2.x.y 版本族，不要写成当前版本，否则永远发现不了 2.8.4 与 2.9.0
+    tag_regex: '^v?2\.\d+\.\d+$'
+    sort: semver
+    delivery:
+      # 官方商店只接受 lazycat：由开发者平台远端复制到 registry.lazycat.cloud
+      mode: lazycat
+  - id: tracearr-init
+    target: service
+    service: tracearr-init
+    source: ghcr.io/connorgallopo/tracearr
+    channel: stable
+    tag_regex: '^v?2\.\d+\.\d+$'
+    sort: semver
+    delivery:
+      mode: lazycat
+
+stores:
+  # 官方商店先关闭：等这一版在盒子上做完 G3 实机验收与 G4 截图，再把截图提交进仓库、
+  # 填好 stores.official.application 并打开，用同一次构建的 LPK 提审。
+  official:
+    enabled: false
+    continue_if_newer_version: true
+    skip_if_version_exists: true
+  private:
+    enabled: false
