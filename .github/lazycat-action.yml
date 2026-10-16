@@ -47,18 +47,13 @@ images:
       mode: lazycat
 
 stores:
-  # 官方商店先关闭：等这一版在盒子上做完 G3 实机验收与 G4 截图，再把截图提交进仓库、
-  # 填好 stores.official.application 并打开，用同一次构建的 LPK 提审。
+  # 官方商店：应用已建档且资料已通过，这里只提交新版本
+  # （application 元数据块只在 create_if_missing: true 时合法；应用已存在时不要带）
   official:
     enabled: true
     continue_if_newer_version: true
     skip_if_version_exists: true
     create_if_missing: false
     changelog_locales: [zh, en]
-    application:
-      language: zh
-      name: Tracearr 媒体播放统计
-      source: https://github.com/connorgallopo/Tracearr
-      source_author: connorgallopo
   private:
     enabled: false
