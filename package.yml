@@ -1,5 +1,5 @@
 package: cloud.lazycat.app.tracearr
-version: 2.8.3
+version: 2.8.3-1
 name: Tracearr
 description: 把 Plex / Jellyfin / Emby 的播放情况汇总成一个面板，看谁在播、播了什么，并识别账号共享。
 author: connorgallopo
