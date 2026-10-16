@@ -74,6 +74,23 @@ application:
           params:
             email: admin@lazycat.local
             password: Tracearr@lazycat
+    # ── 去掉上游 HTML 里的 Google Fonts 链接（response 阶段）─────────────────
+    # 上游前端在 <head> 里引 fonts.googleapis.com 的 Inter 样式表；该域在中国大陆不可达，
+    # 留着会让首屏多等一次超时，最终仍然回落到系统字体。这里直接删掉这三个标签。
+    - id: tracearr-drop-google-fonts
+      'on': response
+      auth_required: false
+      when:
+        - /*
+      do: |
+        if (ctx.status !== 200) return;
+        var ct = String(ctx.headers.get("Content-Type") || "");
+        if (ct.indexOf("text/html") < 0) return;
+        var html = ctx.body.getText();
+        if (html.indexOf("fonts.googleapis.com") < 0 && html.indexOf("fonts.gstatic.com") < 0) return;
+        html = html.replace(/<link[^>]*fonts\.(googleapis|gstatic)\.com[^>]*>/gi, "");
+        ctx.body.set(html);
+
 services:
   # 首次初始化（幂等）：应用自带账号体系，安装时后台建好管理员，用户打开即已登录。
   # 镜像复用应用镜像（自带 node），只换 entrypoint 跑脚本；脚本调应用网络内部服务名。
