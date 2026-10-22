@@ -28,6 +28,7 @@ application:
             if (firstDot <= 0 || !requestHost.endsWith(".heiyu.space") || !["GET", "HEAD", "PUT"].includes(method)) {
 
 
+
               ctx.response.send(["GET", "HEAD", "PUT"].includes(method) ? 400 : 405, "Invalid LazyCat file bridge request");
               return;
             }
@@ -95,8 +96,8 @@ services:
   # 首次初始化（幂等）：应用自带账号体系，安装时后台建好管理员，用户打开即已登录。
   # 镜像复用应用镜像（自带 node），只换 entrypoint 跑脚本；脚本调应用网络内部服务名。
   tracearr-init:
-    # upstream: ghcr.io/connorgallopo/tracearr:2.9.0
-    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:b2ebcddf26064b6e
+    # upstream: ghcr.io/connorgallopo/tracearr:3.0.0
+    image: registry.lazycat.cloud/wans/connorgallopo/tracearr:4e845075cb26ec17
     entrypoint: /usr/local/bin/node
     command: /lzcapp/pkg/content/bootstrap-admin.mjs
     depends_on:
